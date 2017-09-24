@@ -48,12 +48,19 @@ doc = curdoc()
 
 
 @gen.coroutine
-def update_points(x, y, x_r, y_r, x_c, y_c, color, ctr):
-    centers.stream(dict(x=x, y=y, color=pallet[color]), rollover=3)
-    points.stream(dict(x=x_r, y=y_r, color=pallet[color]), rollover=90)
+def update_points(x, y, color):
+    points.stream(dict(x=x, y=y, color=pallet[color]), rollover=90)
 
-    colors = np.array([pallet[i] for i in ctr])
-    centroids.stream(dict(x=x_c, y=y_c, color=colors), rollover=3)
+
+@gen.coroutine
+def update_centers(x, y, color):
+    centers.stream(dict(x=x, y=y, color=pallet[color]), rollover=3)
+
+
+@gen.coroutine
+def update_centroids(x, y, color):
+    colors = np.array([pallet[i] for i in color])
+    centroids.stream(dict(x=x, y=y, color=colors), rollover=3)
 
 
 def cluster_simulations():
@@ -74,7 +81,7 @@ def cluster_simulations():
         color = slice(0, 3)
 
         # Get the closest centriods
-        ctr = np.argmin((np.matrix(x_r).T * np.ones((1, 3)) - x_c)**2 +
+        i_c = np.argmin((np.matrix(x_r).T * np.ones((1, 3)) - x_c)**2 +
                         (np.matrix(y_r).T * np.ones((1, 3)) - y_c)**2, axis=0) \
             .tolist()[0]
 
@@ -84,20 +91,15 @@ def cluster_simulations():
             d = 1/n
 
         # Update centroids
-        for i, k in enumerate(ctr):
+        for i, k in enumerate(i_c):
             x_c[k] = (1 - d)*x_c[k] + d*x_r[i]
             y_c[k] = (1 - d)*y_c[k] + d*y_r[i]
 
-        ret = {
-            "x": x, "y": y,
-            "x_r": x_r, "y_r": y_r,
-            "x_c": x_c, "y_c": y_c,
-            "ctr": ctr,
-            "color": color
-        }
 
         # Sent out the data to
-        doc.add_next_tick_callback(partial(update_points, **ret))
+        doc.add_next_tick_callback(partial(update_points, x=x_r, y=y_r, color=color))
+        doc.add_next_tick_callback(partial(update_centers, x=x, y=y, color=color))
+        doc.add_next_tick_callback(partial(update_centroids, x=x_c, y=y_c, color=i_c))
 
         if center_drift.value == "True":
             t += 0.02
