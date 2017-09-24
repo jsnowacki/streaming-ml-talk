@@ -32,7 +32,7 @@ import org.apache.spark.sql.streaming.{EvilStreamingQueryManager, OutputMode, St
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 
 
-trait StreamingKMeansParams extends Params {
+trait StructuredStreamingKMeansParams extends Params {
   /**
     * The number of cluster centers.
     * Default is 1.
@@ -54,17 +54,17 @@ trait StreamingKMeansParams extends Params {
 
 }
 
-class StreamingKMeansModel(
+class StructuredStreamingKMeansModel(
     override val uid: String,
     val centers: Array[Vector],
-    val weights: Array[Double]) extends Model[StreamingKMeansModel]
-  with StreamingKMeansParams with Serializable {
+    val weights: Array[Double]) extends Model[StructuredStreamingKMeansModel]
+  with StructuredStreamingKMeansParams with Serializable {
 
   private def clusterCentersWithNorm: Iterable[VectorWithNorm] =
     centers.map(new VectorWithNorm(_))
 
   def predict(point: Vector): Int = {
-    StreamingKMeans.findClosest(clusterCentersWithNorm, new VectorWithNorm(point))._1
+    StructuredStreamingKMeans.findClosest(clusterCentersWithNorm, new VectorWithNorm(point))._1
   }
 
   override def transform(dataset: Dataset[_]): DataFrame = {
@@ -76,15 +76,15 @@ class StreamingKMeansModel(
     validateAndTransformSchema(schema)
   }
 
-  override def copy(extra: ParamMap): StreamingKMeansModel = {
-    val copied = new StreamingKMeansModel(uid, centers, weights)
+  override def copy(extra: ParamMap): StructuredStreamingKMeansModel = {
+    val copied = new StructuredStreamingKMeansModel(uid, centers, weights)
     copyValues(copied, extra)
   }
 }
 
-class StreamingKMeans(override val uid: String)
-    extends Estimator[StreamingKMeansModel]
-    with StreamingKMeansParams with Serializable {
+class StructuredStreamingKMeans(override val uid: String)
+    extends Estimator[StructuredStreamingKMeansModel]
+    with StructuredStreamingKMeansParams with Serializable {
 
   def this() = this(Identifiable.randomUID("snb"))
 
@@ -97,7 +97,7 @@ class StreamingKMeans(override val uid: String)
   def setK(value: Int): this.type = set(k, value)
   setDefault(k -> 1)
 
-  override def fit(dataset: Dataset[_]): StreamingKMeansModel = {
+  override def fit(dataset: Dataset[_]): StructuredStreamingKMeansModel = {
     // TODO: implement
     getModel
   }
@@ -107,7 +107,7 @@ class StreamingKMeans(override val uid: String)
   }
 
 
-  protected var model: StreamingKMeansModel = _
+  protected var model: StructuredStreamingKMeansModel = _
   protected var clusterCenters: Array[Vector] = _
   protected var clusterWeights: Array[Double] = _
   var isModelUpdated = true
@@ -159,7 +159,7 @@ class StreamingKMeans(override val uid: String)
       s"Weight for each inital center must be + but got [${weights.mkString(" ")}]")
     clusterCenters = centers
     clusterWeights = weights
-    model = new StreamingKMeansModel(uid, centers, weights)
+    model = new StructuredStreamingKMeansModel(uid, centers, weights)
     this
   }
 
@@ -181,21 +181,21 @@ class StreamingKMeans(override val uid: String)
       Array.fill(getK)(
         Vectors.dense(Array.fill(dim)(scala.util.Random.nextGaussian())))
     clusterWeights = Array.fill(getK)(weight)
-    model = new StreamingKMeansModel(uid, clusterCenters, clusterWeights)
+    model = new StructuredStreamingKMeansModel(uid, clusterCenters, clusterWeights)
     this
   }
 
   /**
-   * Get a new [[StreamingKMeansModel]] by copying the current centers and weights.
+   * Get a new [[StructuredStreamingKMeansModel]] by copying the current centers and weights.
    *
    * Note: not threadsafe.
    */
-  def getModel: StreamingKMeansModel = {
+  def getModel: StructuredStreamingKMeansModel = {
     val centers = Array.tabulate(clusterCenters.length) { i =>
       clusterCenters(i).copy
     }
     val weights = clusterWeights.clone()
-    new StreamingKMeansModel(uid, centers, weights)
+    new StructuredStreamingKMeansModel(uid, centers, weights)
   }
 
   /**
@@ -230,11 +230,11 @@ class StreamingKMeans(override val uid: String)
     (p1._1, p1._2 + p2._2)
   }
 
-  override def copy(extra: ParamMap): StreamingKMeans = defaultCopy(extra)
+  override def copy(extra: ParamMap): StructuredStreamingKMeans = defaultCopy(extra)
 
 }
 
-object StreamingKMeans {
+object StructuredStreamingKMeans {
   def findClosest(
       centers: TraversableOnce[VectorWithNorm],
       point: VectorWithNorm): (Int, Double) = {

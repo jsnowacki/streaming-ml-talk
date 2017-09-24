@@ -65,6 +65,7 @@ case class KMeansSocketServerThread(socket: Socket) extends Thread("KMeansSocket
 
           t += 0.2
         })
+        out.flush()
         Thread.sleep(300)
       }
 

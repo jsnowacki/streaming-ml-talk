@@ -5,14 +5,6 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
 
-case class Point(x: Double, y: Double) {
-  def toPointVector: PointVector = {
-    val v = new DenseVector(Seq(this.x, this.y).toArray)
-    PointVector(v)
-  }
-}
-case class PointVector(features: Vector)
-
 object KMeansStreamingJob {
 
   val appName: String = this.getClass.getSimpleName.replace("$", "")
@@ -48,8 +40,6 @@ object KMeansStreamingJob {
 
     val k = 3
     val dim = 2
-    val clusterSpread = 0.1
-    val seed = 63
 
     val ds = points.map(point => point.toPointVector)
 
@@ -60,7 +50,7 @@ object KMeansStreamingJob {
 //      .start()
 //      .awaitTermination()
 
-    val skm = new StreamingKMeans().setK(k).setRandomCenters(dim, 0.01)
+    val skm = new StructuredStreamingKMeans().setK(k).setRandomCenters(dim, 0.01)
     skm.evilTrain(ds.toDF())
     val model = skm.getModel
 
