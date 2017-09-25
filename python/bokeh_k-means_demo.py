@@ -18,19 +18,12 @@
 # Algorithm based on:
 # Web-Scale K-Means Clustering, D. Sculley
 
-from functools import partial
-from threading import Thread
 import numpy as np
-import time
-
+from bokeh.layouts import layout
 from bokeh.models import ColumnDataSource
-from bokeh.plotting import curdoc, figure
+from bokeh.models.widgets import Select
 from bokeh.palettes import Colorblind3 as pallet
-from bokeh.layouts import widgetbox, layout
-from bokeh.models.widgets import Button, RadioButtonGroup, Select, Slider
-
-
-from tornado import gen
+from bokeh.plotting import curdoc, figure
 
 # this must only be modified from a Bokeh session callback
 points = ColumnDataSource(data=dict(x=[], y=[], color=[]))
