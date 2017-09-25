@@ -36,9 +36,9 @@ trait StructuredStreamingKMeansParams extends Params {
   /**
     * The number of cluster centers.
     * Default is 1.
-   *
-   * @group param
-   */
+    *
+    * @group param
+    */
   final val k: IntParam = new IntParam(this, "smoothing", "The smoothing parameter.",
     ParamValidators.gtEq(0))
 
@@ -55,9 +55,9 @@ trait StructuredStreamingKMeansParams extends Params {
 }
 
 class StructuredStreamingKMeansModel(
-    override val uid: String,
-    val centers: Array[Vector],
-    val weights: Array[Double]) extends Model[StructuredStreamingKMeansModel]
+                                      override val uid: String,
+                                      val centers: Array[Vector],
+                                      val weights: Array[Double]) extends Model[StructuredStreamingKMeansModel]
   with StructuredStreamingKMeansParams with Serializable {
 
   private def clusterCentersWithNorm: Iterable[VectorWithNorm] =
@@ -83,18 +83,19 @@ class StructuredStreamingKMeansModel(
 }
 
 class StructuredStreamingKMeans(override val uid: String)
-    extends Estimator[StructuredStreamingKMeansModel]
+  extends Estimator[StructuredStreamingKMeansModel]
     with StructuredStreamingKMeansParams with Serializable {
 
   def this() = this(Identifiable.randomUID("snb"))
 
   /**
-   * Set the number of cluster centers.
-   * Default is 1.
-   *
-   * @group setParam
-   */
+    * Set the number of cluster centers.
+    * Default is 1.
+    *
+    * @group setParam
+    */
   def setK(value: Int): this.type = set(k, value)
+
   setDefault(k -> 1)
 
   override def fit(dataset: Dataset[_]): StructuredStreamingKMeansModel = {
@@ -119,11 +120,11 @@ class StructuredStreamingKMeans(override val uid: String)
   }
 
   /**
-   * Train the model on a streaming DF using evil tricks
-   */
+    * Train the model on a streaming DF using evil tricks
+    */
   def evilTrain(df: DataFrame): StreamingQuery = {
     assertInitialized()
-    val sink = ForeachDatasetSink({df: DataFrame => update(df)})
+    val sink = ForeachDatasetSink({ df: DataFrame => update(df) })
     val sparkSession = df.sparkSession
     val evilStreamingQueryManager = EvilStreamingQueryManager(sparkSession.streams)
     val checkpointLocation = s"${this.getClass.getSimpleName}-checkpoint"
@@ -136,10 +137,10 @@ class StructuredStreamingKMeans(override val uid: String)
   }
 
   /**
-   * Update the class counts with a new chunk of labeled point data.
-   *
-   * @param df Dataframe to add
-   */
+    * Update the class counts with a new chunk of labeled point data.
+    *
+    * @param df Dataframe to add
+    */
   def update(df: DataFrame): Unit = {
     isModelUpdated = false
     val rdd = df.rdd.map { case Row(point: Vector) => point }
@@ -147,10 +148,10 @@ class StructuredStreamingKMeans(override val uid: String)
   }
 
   /**
-   * Specify initial centers directly.
-   */
+    * Specify initial centers directly.
+    */
   def setInitialCenters(centers: Array[Vector], weights: Array[Double]):
-      this.type = {
+  this.type = {
     require(centers.size == weights.size,
       "Number of initial centers must be equal to number of weights")
     require(centers.size == getK,
@@ -164,14 +165,14 @@ class StructuredStreamingKMeans(override val uid: String)
   }
 
   /**
-   * Initialize random centers, requiring only the number of dimensions.
-   *
-   * @param dim Number of dimensions
-   * @param weight Weight for each center
-   * @param seed Random seed
-   */
+    * Initialize random centers, requiring only the number of dimensions.
+    *
+    * @param dim    Number of dimensions
+    * @param weight Weight for each center
+    * @param seed   Random seed
+    */
   def setRandomCenters(dim: Int, weight: Double,
-    seed: Long = scala.util.Random.nextLong): this.type = {
+                       seed: Long = scala.util.Random.nextLong): this.type = {
 
     require(dim > 0,
       s"Number of dimensions must be positive but got ${dim}")
@@ -186,10 +187,10 @@ class StructuredStreamingKMeans(override val uid: String)
   }
 
   /**
-   * Get a new [[StructuredStreamingKMeansModel]] by copying the current centers and weights.
-   *
-   * Note: not threadsafe.
-   */
+    * Get a new [[StructuredStreamingKMeansModel]] by copying the current centers and weights.
+    *
+    * Note: not threadsafe.
+    */
   def getModel: StructuredStreamingKMeansModel = {
     val centers = Array.tabulate(clusterCenters.length) { i =>
       clusterCenters(i).copy
@@ -199,8 +200,8 @@ class StructuredStreamingKMeans(override val uid: String)
   }
 
   /**
-   * Update the cluster centers and the cluster weights with a new chunk of data.
-   */
+    * Update the cluster centers and the cluster weights with a new chunk of data.
+    */
   def add(data: RDD[Vector]): Unit = {
     val closest = data.map(point => (model.predict(point), (point, 1L)))
 
@@ -236,8 +237,8 @@ class StructuredStreamingKMeans(override val uid: String)
 
 object StructuredStreamingKMeans {
   def findClosest(
-      centers: TraversableOnce[VectorWithNorm],
-      point: VectorWithNorm): (Int, Double) = {
+                   centers: TraversableOnce[VectorWithNorm],
+                   point: VectorWithNorm): (Int, Double) = {
     var bestDistance = Double.PositiveInfinity
     var bestIndex = 0
     var i = 0

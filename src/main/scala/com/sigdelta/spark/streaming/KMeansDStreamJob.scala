@@ -36,8 +36,8 @@ object KMeansDStreamJob {
       .map(Point.fromJson)
       .map(point => Vectors.dense(point.toArray))
 
-//    points.print()
-//    points.count()
+    //    points.print()
+    //    points.count()
 
     val model = new StreamingKMeans()
       .setK(3)
@@ -46,18 +46,18 @@ object KMeansDStreamJob {
 
     model.trainOn(points)
     val res = model.predictOnValues(points.map(p => (p, p)))
-          .map{ case (vector: Vector, label: Int) =>
-            val point = Point.fromOldVector(vector)
-            val m = model.latestModel()
-            val center = Point.fromOldVector(m.clusterCenters(label))
-            PointCenter(point, center, label).toJson
-          }
+      .map { case (vector: Vector, label: Int) =>
+        val point = Point.fromOldVector(vector)
+        val m = model.latestModel()
+        val center = Point.fromOldVector(m.clusterCenters(label))
+        PointCenter(point, center, label).toJson
+      }
 
     res.foreachRDD { rdd =>
-        val socket = new Socket("localhost", 9911)
-        rdd.collect().foreach{ json =>
-            socket.getOutputStream.write(s"$json\n".getBytes(StandardCharsets.UTF_8))
-        }
+      val socket = new Socket("localhost", 9911)
+      rdd.collect().foreach { json =>
+        socket.getOutputStream.write(s"$json\n".getBytes(StandardCharsets.UTF_8))
+      }
     }
 
     res.print()

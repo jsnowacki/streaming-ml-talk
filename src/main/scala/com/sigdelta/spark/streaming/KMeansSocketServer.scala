@@ -32,7 +32,7 @@ object KMeansSocketServer {
 
     println(s"Server started on port $serverPort")
 
-    while(doWork) {
+    while (doWork) {
       val socket = server.accept()
       val thread = KMeansSocketServerThread(socket)
       println(s"Client $socket started")
@@ -54,9 +54,9 @@ case class KMeansSocketServerThread(socket: Socket) extends Thread("KMeansSocket
 
       val out = new BufferedOutputStream(socket.getOutputStream)
       while (true) {
-        Seq(t - 3/4.0*Pi, t, t + 3/4.0*Pi).foreach(q => {
-          val x = 2*sin(q) + rand.nextGaussian()/2
-          val y = 2*cos(q) + rand.nextGaussian()/2
+        Seq(t - 3 / 4.0 * Pi, t, t + 3 / 4.0 * Pi).foreach(q => {
+          val x = 2 * sin(q) + rand.nextGaussian() / 2
+          val y = 2 * cos(q) + rand.nextGaussian() / 2
           val line = s"""{"x": $x, "y": $y}""" + "\n"
           out.write(line.getBytes(StandardCharsets.UTF_8))
         })

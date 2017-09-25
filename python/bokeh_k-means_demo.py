@@ -18,7 +18,6 @@
 # Algorithm based on:
 # Web-Scale K-Means Clustering, D. Sculley
 
-
 from functools import partial
 from threading import Thread
 import numpy as np

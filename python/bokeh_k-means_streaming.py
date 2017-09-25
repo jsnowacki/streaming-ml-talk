@@ -15,23 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Algorithm based on:
-# Web-Scale K-Means Clustering, D. Sculley
 import json
 from collections import deque
-from functools import partial
 from threading import Thread
-import numpy as np
-import time
 
 from bokeh.models import ColumnDataSource
-from bokeh.plotting import curdoc, figure
 from bokeh.palettes import Colorblind3 as pallet
-from bokeh.layouts import widgetbox, layout
-from bokeh.models.widgets import Button, RadioButtonGroup, Select, Slider
-
-
-from tornado import gen
+from bokeh.plotting import curdoc, figure
 
 # this must only be modified from a Bokeh session callback
 from socket_server import ThreadedServer
