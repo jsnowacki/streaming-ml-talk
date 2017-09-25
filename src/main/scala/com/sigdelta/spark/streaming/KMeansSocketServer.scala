@@ -47,6 +47,7 @@ case class KMeansSocketServerThread(socket: Socket) extends Thread("KMeansSocket
 
   override def run(): Unit = {
     val rand = scala.util.Random
+    val r = 2.5
     var t = 0.0
 
     try {
@@ -55,13 +56,12 @@ case class KMeansSocketServerThread(socket: Socket) extends Thread("KMeansSocket
       val out = new BufferedOutputStream(socket.getOutputStream)
       while (true) {
         Seq(t - 3 / 4.0 * Pi, t, t + 3 / 4.0 * Pi).foreach(q => {
-          val x = 2 * sin(q) + rand.nextGaussian() / 2
-          val y = 2 * cos(q) + rand.nextGaussian() / 2
+          val x = r * sin(q) + rand.nextGaussian() / 3
+          val y = r * cos(q) + rand.nextGaussian() / 3
           val line = s"""{"x": $x, "y": $y}""" + "\n"
           out.write(line.getBytes(StandardCharsets.UTF_8))
         })
         t += 0.02
-        //println(t)
         out.flush()
         Thread.sleep(200)
       }
