@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
+import org.apache.spark.mllib.linalg.{Vector => OldVector}
 
 case class Point(x: Double, y: Double) {
 
@@ -22,6 +23,21 @@ object Point {
 
     mapper.readValue[Point](line)
   }
+
+  def fromOldVector(vector: OldVector): Point = {
+    val a = vector.toArray
+    Point(a(0), a(1))
+  }
 }
 
 case class PointVector(features: Vector)
+
+case class PointCenter(point: Point, centroid: Point, label: Int) {
+  def toJson: String = {
+    val mapper =  new ObjectMapper() with ScalaObjectMapper
+    mapper.registerModule(DefaultScalaModule)
+
+    mapper.writeValueAsString(this)
+  }
+}
+

@@ -40,8 +40,6 @@ object KMeansSocketServer {
       thread.start()
     }
     server.close()
-
-
   }
 }
 
