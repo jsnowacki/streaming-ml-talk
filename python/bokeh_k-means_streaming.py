@@ -33,7 +33,6 @@ centers = ColumnDataSource(data=dict(x=3*[None], y=3*[None], color=pallet))
 # see then same document.
 doc = curdoc()
 
-
 data = deque()
 
 
@@ -43,7 +42,6 @@ def update():
     x_c, y_c = centers.data['x'], centers.data['y']
     color = list()
     for _ in range(len(data)):
-        #print(data.popleft())
         row = json.loads(data.popleft())
         x_p.append(row['point']['x'])
         y_p.append(row['point']['y'])

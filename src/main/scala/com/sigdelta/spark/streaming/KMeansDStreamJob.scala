@@ -36,9 +36,6 @@ object KMeansDStreamJob {
       .map(Point.fromJson)
       .map(point => Vectors.dense(point.toArray))
 
-    //    points.print()
-    //    points.count()
-
     val model = new StreamingKMeans()
       .setK(3)
       .setDecayFactor(0.3)
