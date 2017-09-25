@@ -32,7 +32,7 @@ object Point {
 
 case class PointVector(features: Vector)
 
-case class PointCenter(point: Point, centroid: Point, label: Int) {
+case class PointCenter(point: Point, center: Point, label: Int) {
   def toJson: String = {
     val mapper =  new ObjectMapper() with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)

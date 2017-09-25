@@ -170,3 +170,4 @@ fabric.properties
 
 *checkpoint*
 spark-warehouse
+test.sc

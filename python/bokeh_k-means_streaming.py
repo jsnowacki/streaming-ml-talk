@@ -17,8 +17,8 @@
 
 # Algorithm based on:
 # Web-Scale K-Means Clustering, D. Sculley
-
-
+import json
+from collections import deque
 from functools import partial
 from threading import Thread
 import numpy as np
@@ -34,85 +34,53 @@ from bokeh.models.widgets import Button, RadioButtonGroup, Select, Slider
 from tornado import gen
 
 # this must only be modified from a Bokeh session callback
+from socket_server import ThreadedServer
+
 points = ColumnDataSource(data=dict(x=[], y=[], color=[]))
-centroids = ColumnDataSource(data=dict(x=[], y=[], color=[]))
-centers = ColumnDataSource(data=dict(x=[], y=[], color=[]))
-
-center_drift = Select(title='Center drift:', value='False', options=['False', 'True'])
-adaptive = Select(title='Adaptive:', value='True', options=['False', 'True'])
-
+centers = ColumnDataSource(data=dict(x=3*[None], y=3*[None], color=pallet))
 
 # This is important! Save curdoc() to make sure all threads
 # see then same document.
 doc = curdoc()
 
 
-@gen.coroutine
-def update_points(x, y, color):
-    points.stream(dict(x=x, y=y, color=pallet[color]), rollover=90)
+data = deque()
 
 
-@gen.coroutine
-def update_centers(x, y, color):
-    centers.stream(dict(x=x, y=y, color=pallet[color]), rollover=3)
+def update():
+    # Safer than while
+    x_p, y_p = list(), list()
+    x_c, y_c = centers.data['x'], centers.data['y']
+    color = list()
+    for _ in range(len(data)):
+        #print(data.popleft())
+        row = json.loads(data.popleft())
+        x_p.append(row['point']['x'])
+        y_p.append(row['point']['y'])
+        i = row['label']
+        color.append(pallet[i])
+        x_c[i] = row['center']['x']
+        y_c[i] = row['center']['y']
 
-
-@gen.coroutine
-def update_centroids(x, y, color):
-    colors = np.array([pallet[i] for i in color])
-    centroids.stream(dict(x=x, y=y, color=colors), rollover=3)
-
-
-def cluster_simulations():
-    t = 0
-    n = 0
-
-    x_c = np.array([-1, 0, 1], dtype=np.float)
-    y_c = np.array([-1, 0, -1], dtype=np.float)
-    while True:
-        # do some blocking computation
-        time.sleep(0.2)
-        n += 1
-        q = np.array([t + -3/4*np.pi, t, t + 3/4*np.pi])
-        x = 2*np.sin(q)
-        y = 2*np.cos(q)
-        x_r = x + np.random.randn(3)/2
-        y_r = y + np.random.randn(3)/2
-        color = slice(0, 3)
-
-        # Get the closest centriods
-        i_c = np.argmin((np.matrix(x_r).T * np.ones((1, 3)) - x_c)**2 +
-                        (np.matrix(y_r).T * np.ones((1, 3)) - y_c)**2, axis=0) \
-            .tolist()[0]
-
-        if adaptive.value == "True":
-            d = 0.2
-        else:
-            d = 1/n
-
-        # Update centroids
-        for i, k in enumerate(i_c):
-            x_c[k] = (1 - d)*x_c[k] + d*x_r[i]
-            y_c[k] = (1 - d)*y_c[k] + d*y_r[i]
-
-
-        # Sent out the data to
-        doc.add_next_tick_callback(partial(update_points, x=x_r, y=y_r, color=color))
-        doc.add_next_tick_callback(partial(update_centers, x=x, y=y, color=color))
-        doc.add_next_tick_callback(partial(update_centroids, x=x_c, y=y_c, color=i_c))
-
-        if center_drift.value == "True":
-            t += 0.02
+    points.stream(dict(x=x_p, y=y_p, color=color), rollover=90)
+    centers.stream(dict(x=x_c, y=y_c, color=pallet), rollover=3)
 
 
 p = figure(x_range=[-4, 4], y_range=[-4, 4])
 p.circle(x='x', y='y', color='color', source=points)
-p.cross(x='x', y='y', color='color', size=14, source=centers)
-p.x(x='x', y='y', color='color', size=14, source=centroids)
+p.x(x='x', y='y', color='color', size=14, source=centers)
 
-l = layout([widgetbox(center_drift, adaptive)], [p])
+p.xaxis.axis_label = "X"
+p.yaxis.axis_label = "Y"
 
-doc.add_root(l)
+doc.add_root(p)
+doc.add_periodic_callback(update, 200)
 
-thread = Thread(target=cluster_simulations)
+
+def run_socket_server():
+    socket_server = ThreadedServer(host="localhost", port=9911, deque=data)
+    socket_server.listen()
+
+
+thread = Thread(target=run_socket_server)
 thread.start()

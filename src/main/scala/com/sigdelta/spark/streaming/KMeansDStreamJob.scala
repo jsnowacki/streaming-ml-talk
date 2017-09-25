@@ -17,9 +17,12 @@
 
 package com.sigdelta.spark.streaming
 
+import java.net.Socket
+import java.nio.charset.StandardCharsets
+
 import org.apache.spark.SparkConf
 import org.apache.spark.mllib.clustering.StreamingKMeans
-import org.apache.spark.mllib.linalg.{Vectors, Vector}
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 object KMeansDStreamJob {
@@ -38,7 +41,7 @@ object KMeansDStreamJob {
 
     val model = new StreamingKMeans()
       .setK(3)
-      .setDecayFactor(1.0)
+      .setDecayFactor(0.3)
       .setRandomCenters(2, 0.0)
 
     model.trainOn(points)
@@ -49,6 +52,13 @@ object KMeansDStreamJob {
             val center = Point.fromOldVector(m.clusterCenters(label))
             PointCenter(point, center, label).toJson
           }
+
+    res.foreachRDD { rdd =>
+        val socket = new Socket("localhost", 9911)
+        rdd.collect().foreach{ json =>
+            socket.getOutputStream.write(s"$json\n".getBytes(StandardCharsets.UTF_8))
+        }
+    }
 
     res.print()
 
