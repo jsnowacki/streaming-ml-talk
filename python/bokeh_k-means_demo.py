@@ -46,71 +46,60 @@ adaptive = Select(title='Adaptive:', value='True', options=['False', 'True'])
 # see then same document.
 doc = curdoc()
 
+t = 0
+n = 0
+x_c = np.array([-1, 0, 1], dtype=np.float)
+y_c = np.array([-1, 0, -1], dtype=np.float)
 
-@gen.coroutine
-def update_points(x, y, x_r, y_r, x_c, y_c, color, ctr):
+
+def cluster_simulations():
+    global t, n, x_c, y_c
+
+    n += 1
+    q = np.array([t + -3/4*np.pi, t, t + 3/4*np.pi])
+    x = 2*np.sin(q)
+    y = 2*np.cos(q)
+    x_r = x + np.random.randn(3)/2
+    y_r = y + np.random.randn(3)/2
+    color = slice(0, 3)
+
+    # Get the closest centriods
+    ctr = np.argmin((np.matrix(x_r).T * np.ones((1, 3)) - x_c)**2 +
+                    (np.matrix(y_r).T * np.ones((1, 3)) - y_c)**2, axis=0) \
+        .tolist()[0]
+
+    if adaptive.value == "True":
+        d = 0.2
+    else:
+        d = 1/n
+
+    # Update centroids
+    for i, k in enumerate(ctr):
+        x_c[k] = (1 - d)*x_c[k] + d*x_r[i]
+        y_c[k] = (1 - d)*y_c[k] + d*y_r[i]
+
+    # Update data sources
     centers.stream(dict(x=x, y=y, color=pallet[color]), rollover=3)
     points.stream(dict(x=x_r, y=y_r, color=pallet[color]), rollover=90)
 
     colors = np.array([pallet[i] for i in ctr])
     centroids.stream(dict(x=x_c, y=y_c, color=colors), rollover=3)
 
+    if center_drift.value == "True":
+        t += 0.02
 
-def cluster_simulations():
-    t = 0
-    n = 0
 
-    x_c = np.array([-1, 0, 1], dtype=np.float)
-    y_c = np.array([-1, 0, -1], dtype=np.float)
-    while True:
-        # do some blocking computation
-        time.sleep(0.2)
-        n += 1
-        q = np.array([t + -3/4*np.pi, t, t + 3/4*np.pi])
-        x = 2*np.sin(q)
-        y = 2*np.cos(q)
-        x_r = x + np.random.randn(3)/2
-        y_r = y + np.random.randn(3)/2
-        color = slice(0, 3)
-
-        # Get the closest centriods
-        ctr = np.argmin((np.matrix(x_r).T * np.ones((1, 3)) - x_c)**2 +
-                        (np.matrix(y_r).T * np.ones((1, 3)) - y_c)**2, axis=0) \
-            .tolist()[0]
-
-        if adaptive.value == "True":
-            d = 0.2
-        else:
-            d = 1/n
-
-        # Update centroids
-        for i, k in enumerate(ctr):
-            x_c[k] = (1 - d)*x_c[k] + d*x_r[i]
-            y_c[k] = (1 - d)*y_c[k] + d*y_r[i]
-
-        ret = {
-            "x": x, "y": y,
-            "x_r": x_r, "y_r": y_r,
-            "x_c": x_c, "y_c": y_c,
-            "ctr": ctr,
-            "color": color
-        }
-
-        # Sent out the data to
-        doc.add_next_tick_callback(partial(update_points, **ret))
-
-        if center_drift.value == "True":
-            t += 0.02
-
+doc.add_periodic_callback(cluster_simulations, 200)
 
 p = figure(x_range=[-4, 4], y_range=[-4, 4])
 p.circle(x='x', y='y', color='color', source=points)
 p.cross(x='x', y='y', color='color', size=14, source=centers)
 p.x(x='x', y='y', color='color', size=14, source=centroids)
 
-l = layout([widgetbox(center_drift, adaptive)], [p])
+p.xaxis.axis_label = "X"
+p.yaxis.axis_label = "Y"
+
+l = layout([center_drift, adaptive], [p])
 
 doc.add_root(l)
 
-thread = Thread(target=cluster_simulations)
-thread.start()
