@@ -23,8 +23,7 @@ import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
 import org.apache.spark.mllib.linalg.{Vector => OldVector}
 
-case class Point(x: Double, y: Double) {
-
+case class Point(x: Double, y: Double) extends Jasonizable{
   def toArray: Array[Double] = Seq(this.x, this.y).toArray
 
   def toPointVector: PointVector = {
@@ -54,7 +53,9 @@ object Point {
 
 case class PointVector(features: Vector)
 
-case class PointCenter(point: Point, center: Point, label: Int) {
+case class PointCenter(point: Point, center: Point, label: Int) extends Jasonizable
+
+trait Jasonizable {
   def toJson: String = {
     val mapper = new ObjectMapper() with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
@@ -62,4 +63,3 @@ case class PointCenter(point: Point, center: Point, label: Int) {
     mapper.writeValueAsString(this)
   }
 }
-

@@ -58,8 +58,8 @@ case class KMeansSocketServerThread(socket: Socket) extends Thread("KMeansSocket
         Seq(t - 3 / 4.0 * Pi, t, t + 3 / 4.0 * Pi).foreach(q => {
           val x = r * sin(q) + rand.nextGaussian() / 3
           val y = r * cos(q) + rand.nextGaussian() / 3
-          val line = s"""{"x": $x, "y": $y}""" + "\n"
-          out.write(line.getBytes(StandardCharsets.UTF_8))
+          val p = Point(x, y)
+          out.write(s"${p.toJson}\n".getBytes(StandardCharsets.UTF_8))
         })
         t += 0.02
         out.flush()
