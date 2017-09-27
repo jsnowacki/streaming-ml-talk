@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-// from https://github.com/holdenk/spark-structured-streaming-ml
+// base from https://github.com/holdenk/spark-structured-streaming-ml
 
 package com.sigdelta.spark.streaming
 
@@ -39,11 +39,15 @@ trait StructuredStreamingKMeansParams extends Params {
     *
     * @group param
     */
-  final val k: IntParam = new IntParam(this, "smoothing", "The smoothing parameter.",
-    ParamValidators.gtEq(0))
+  final val k: IntParam = new IntParam(this, "centers", "The number of cluster centers.",
+    ParamValidators.gt(0))
+
+  final val decayFactor: DoubleParam = new DoubleParam(this, "smoothing", "The smoothing parameter.",
+    ParamValidators.inRange(0.0, 1.0))
 
   /** @group getParam */
   final def getK: Int = getOrDefault(k)
+  final def getDecayFactor: Double = getOrDefault(decayFactor)
 
   def validateAndTransformSchema(schema: StructType): StructType = {
     // TODO: check feature column
@@ -98,6 +102,11 @@ class StructuredStreamingKMeans(override val uid: String)
 
   setDefault(k -> 1)
 
+  def setDecayFactor(value: Double): this.type = set(decayFactor, value)
+
+  setDefault(decayFactor -> 0.5)
+
+
   override def fit(dataset: Dataset[_]): StructuredStreamingKMeansModel = {
     // TODO: implement
     getModel
@@ -106,7 +115,6 @@ class StructuredStreamingKMeans(override val uid: String)
   override def transformSchema(schema: StructType): StructType = {
     validateAndTransformSchema(schema)
   }
-
 
   protected var model: StructuredStreamingKMeansModel = _
   protected var clusterCenters: Array[Vector] = _
@@ -152,10 +160,10 @@ class StructuredStreamingKMeans(override val uid: String)
     */
   def setInitialCenters(centers: Array[Vector], weights: Array[Double]):
   this.type = {
-    require(centers.size == weights.size,
+    require(centers.length == weights.length,
       "Number of initial centers must be equal to number of weights")
-    require(centers.size == getK,
-      s"Number of initial centers must be ${getK} but got ${centers.size}")
+    require(centers.length == getK,
+      s"Number of initial centers must be $getK but got ${centers.length}")
     require(weights.forall(_ >= 0),
       s"Weight for each inital center must be + but got [${weights.mkString(" ")}]")
     clusterCenters = centers
@@ -175,9 +183,9 @@ class StructuredStreamingKMeans(override val uid: String)
                        seed: Long = scala.util.Random.nextLong): this.type = {
 
     require(dim > 0,
-      s"Number of dimensions must be positive but got ${dim}")
+      s"Number of dimensions must be positive but got $dim")
     require(weight >= 0,
-      s"Weight for each center must be nonnegative but got ${weight}")
+      s"Weight for each center must be nonnegative but got $weight")
     clusterCenters =
       Array.fill(getK)(
         Vectors.dense(Array.fill(dim)(scala.util.Random.nextGaussian())))
@@ -205,17 +213,20 @@ class StructuredStreamingKMeans(override val uid: String)
   def add(data: RDD[Vector]): Unit = {
     val closest = data.map(point => (model.predict(point), (point, 1L)))
 
-    // TODO: don't compute this always
-    val dim = closest.first()._2._1.size
+    val dim = clusterCenters(0).size
+    val discount = getDecayFactor
 
     val pointStats = closest
       .aggregateByKey((Vectors.zeros(dim), 0L))(mergeContribs, mergeContribs)
       .collect()
 
+    // apply discount to weights
+    BLAS.scal(discount, Vectors.dense(clusterWeights))
+
     pointStats.foreach { case (label, (sum, count)) =>
       val centroid = clusterCenters(label)
 
-      val updatedWeight = model.weights(label) + count
+      val updatedWeight = clusterWeights(label) + count
       val lambda = count / math.max(updatedWeight, 1e-16)
 
       clusterWeights(label) = updatedWeight

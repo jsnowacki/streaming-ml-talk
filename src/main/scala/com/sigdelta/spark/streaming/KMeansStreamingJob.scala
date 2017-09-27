@@ -67,7 +67,10 @@ object KMeansStreamingJob {
     //      .start()
     //      .awaitTermination()
 
-    val skm = new StructuredStreamingKMeans().setK(k).setRandomCenters(dim, 0.01)
+    val skm = new StructuredStreamingKMeans()
+      .setK(k)
+      .setDecayFactor(0.3)
+      .setRandomCenters(dim, 0.01)
     skm.evilTrain(ds.toDF())
     val model = skm.getModel
 
