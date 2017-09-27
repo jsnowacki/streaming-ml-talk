@@ -22,6 +22,8 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
 
+import scala.util.{Success, Try}
+
 object KMeansStreamingJob {
 
   val appName: String = this.getClass.getSimpleName.replace("$", "")
@@ -49,36 +51,35 @@ object KMeansStreamingJob {
       .select("json.*")
       .as[Point]
 
-    //    points
-    //      .writeStream
-    //      .format("console")
-    //      .option("truncate", value = false)
-    //      .start()
-
     val k = 3
     val dim = 2
+    val a = 0.3
 
     val ds = points.map(point => point.toPointVector)
 
-    //    ds
-    //      .writeStream
-    //      .format("console")
-    //      .option("truncate", value = false)
-    //      .start()
-    //      .awaitTermination()
-
     val skm = new StructuredStreamingKMeans()
       .setK(k)
-      .setDecayFactor(0.3)
+      .setDecayFactor(a)
       .setRandomCenters(dim, 0.01)
     skm.evilTrain(ds.toDF())
-    val model = skm.getModel
 
-    val labeledPoints = model.transform(ds)
+    val labeledPoints = ds
+        .map{(pointVector: PointVector) =>
+          val model = skm.getModel
+          val point = Point.fromVector(pointVector.features)
+          val label = model.predict(pointVector.features)
+          val center = Point.fromVector(model.centers(label))
+          PointCenter(point, center, label).toJson
+        }
 
-    val query = labeledPoints.writeStream
+    labeledPoints.writeStream
       .format("console")
       .option("truncate", value = false)
+      .start()
+
+    val query = labeledPoints
+      .writeStream
+      .foreach(new SocketWriter("localhost", 9911))
       .start()
 
     query.awaitTermination()

@@ -38,13 +38,15 @@ case class EvilStreamingQueryManager(streamingQueryManager: StreamingQueryManage
     userSpecifiedCheckpointLocation: Option[String],
     df: DataFrame,
     sink: Sink,
-    outputMode: OutputMode): StreamingQuery = {
+    outputMode: OutputMode,
+    useTempCheckpointLocation:Boolean = false): StreamingQuery = {
     streamingQueryManager.startQuery(
       userSpecifiedName,
       userSpecifiedCheckpointLocation,
       df,
       sink,
-      outputMode)
+      outputMode,
+      useTempCheckpointLocation)
   }
 }
 //end::evil[]

@@ -45,6 +45,11 @@ object Point {
     val a = vector.toArray
     Point(a(0), a(1))
   }
+
+  def fromVector(vector: Vector): Point = {
+    val a = vector.toArray
+    Point(a(0), a(1))
+  }
 }
 
 case class PointVector(features: Vector)

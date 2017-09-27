@@ -135,13 +135,14 @@ class StructuredStreamingKMeans(override val uid: String)
     val sink = ForeachDatasetSink({ df: DataFrame => update(df) })
     val sparkSession = df.sparkSession
     val evilStreamingQueryManager = EvilStreamingQueryManager(sparkSession.streams)
-    val checkpointLocation = s"${this.getClass.getSimpleName}-checkpoint"
     evilStreamingQueryManager.startQuery(
       Some(s"skmeans-train-$uid"),
-      Some(checkpointLocation),
+      None,
       df,
       sink,
-      OutputMode.Append())
+      OutputMode.Append(),
+      useTempCheckpointLocation = true
+    )
   }
 
   /**
@@ -232,6 +233,15 @@ class StructuredStreamingKMeans(override val uid: String)
       clusterWeights(label) = updatedWeight
       BLAS.scal(1.0 - lambda, centroid)
       BLAS.axpy(lambda / count, sum, centroid)
+      clusterCenters(label) = centroid
+
+      // display the updated cluster centers
+      val display = clusterCenters(label).size match {
+        case x if x > 100 => centroid.toArray.take(100).mkString("[", ",", "...")
+        case _ => centroid.toArray.mkString("[", ",", "]")
+      }
+
+      logInfo(s"Cluster $label updated with weight $updatedWeight and centroid: $display")
     }
   }
 
